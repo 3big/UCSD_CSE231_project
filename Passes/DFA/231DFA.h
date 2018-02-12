@@ -70,7 +70,7 @@ class Info {
 template <class Info, bool Direction>
 class DataFlowAnalysis {
 
-  private:
+  protected:
 		typedef std::pair<unsigned, unsigned> Edge;
 		// Index to instruction map
 		std::map<unsigned, Instruction *> IndexToInstr;
@@ -79,8 +79,8 @@ class DataFlowAnalysis {
 		// Edge to information map
 		std::map<Edge, Info *> EdgeToInfo;
 		// The bottom of the lattice
-    Info Bottom;
-    // The initial state of the analysis
+    	Info Bottom;
+    	// The initial state of the analysis
 		Info InitialState;
 		// EntryInstr points to the first instruction to be processed in the analysis
 		Instruction * EntryInstr;
@@ -224,7 +224,7 @@ class DataFlowAnalysis {
      * The flow function.
      *   Instruction I: the IR instruction to be processed.
      *   std::vector<unsigned> & IncomingEdges: the vector of the indices of the source instructions of the incoming edges.
-     *   std::vector<unsigned> & IncomingEdges: the vector of indices of the source instructions of the outgoing edges.
+     *   std::vector<unsigned> & OutgoingEdges: the vector of indices of the source instructions of the outgoing edges.
      *   std::vector<Info *> & Infos: the vector of the newly computed information for each outgoing eages.
      *
      * Direction:
@@ -277,8 +277,35 @@ class DataFlowAnalysis {
     	assert(EntryInstr != nullptr && "Entry instruction is null.");
 
     	// (2) Initialize the work list
+    	unsigned node = 0;
+    	worklist.push_back(node++);
+    	for (inst_iterator I = inst_begin(func), E = inst_end(func); I != E; ++I) {
+	  		worklist.push_back(node);
+	  		node++;
+	  	}
 
     	// (3) Compute until the work list is empty
+    	while(!worklist.empty()) {
+    		unsigned index = worklist.front();
+    		worklist.pop_front();
+    		if(index==0) continue;
+    		Instruction * I = IndexToInstr[index];
+    		std::vector<unsigned> IncomingEdges;
+	  		std::vector<unsigned> OutgoingEdges;
+	  		std::vector<Info *> Infos; //newly computed infos
+	  		getIncomingEdges(index, &IncomingEdges);
+	  		getOutgoingEdges(index, &OutgoingEdges);
+	  		flowfunction(I, IncomingEdges, OutgoingEdges, Infos);
+	  		for(int i=0; i < OutgoingEdges.size(); i++) {
+	  			unsigned dst = OutgoingEdges[i];
+	  			Edge out_edge = std::make_pair(index, dst);
+	  			if(!Info::equals(EdgeToInfo[out_edge], Infos[i])) {
+	  				EdgeToInfo[out_edge] = Infos[i];
+	  				worklist.push_back(OutgoingEdges[i]);
+	  			}	  			
+	  		}
+	  		
+    	}
     }
 };
 
