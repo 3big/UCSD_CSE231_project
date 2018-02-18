@@ -75,12 +75,14 @@ namespace llvm {
 
 			ReachingInfo* info_index = new ReachingInfo();
 			unsigned op = (*I).getOpcode();
+			errs()<< op<<"\n";
+			
 			if(isa<BinaryOperator>(I) || op==29 || op==30 ||
 			   op==32 || op==51 || op==52 || op==55) 
 			{
 				info_index->info_list.insert(index);
 			}
-			else if(op == 53) {
+			if(op == 53) {
 				info_index->info_list.insert(index++);
 				Instruction * next = I->getNextNode();
 				while(isa<PHINode>(next)) {
@@ -95,7 +97,6 @@ namespace llvm {
 	  			ReachingInfo* tmp_info = new ReachingInfo();
 				tmp_info = ReachingInfo::join(info_in, info_index, tmp_info);
 				new_info = ReachingInfo::join(tmp_info, info_out, new_info);
-				EdgeToInfo[out_edge] = new_info;
 				Infos.push_back(new_info);
 			}
 
