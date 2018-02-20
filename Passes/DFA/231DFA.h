@@ -60,7 +60,7 @@ class Info {
      * Direction:
      *   In your subclass you need to implement this function.
      */
-    static Info* join(Info * info1, Info * info2, Info * result);
+    static void join(Info * info1, Info * info2, Info * result);
 };
 
 /*
