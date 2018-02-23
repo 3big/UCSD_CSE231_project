@@ -292,15 +292,18 @@ class DataFlowAnalysis {
     		Instruction * I = IndexToInstr[index];
     		std::vector<unsigned> IncomingEdges;
 	  		std::vector<unsigned> OutgoingEdges;
-	  		std::vector<Info *> Infos; //newly computed infos
+	  		std::vector<Info *> Infos;
 	  		getIncomingEdges(index, &IncomingEdges);
 	  		getOutgoingEdges(index, &OutgoingEdges);
 	  		flowfunction(I, IncomingEdges, OutgoingEdges, Infos);
 	  		for(int i=0; i < OutgoingEdges.size(); i++) {
 	  			unsigned dst = OutgoingEdges[i];
 	  			Edge out_edge = std::make_pair(index, dst);
-	  			if(!Info::equals(EdgeToInfo[out_edge], Infos[i])) {
-	  				EdgeToInfo[out_edge] = Infos[i];
+	  			Info * newInfo = new Info();
+	  			Info::join(Infos[i], EdgeToInfo[out_edge], newInfo);
+
+	  			if(!Info::equals(EdgeToInfo[out_edge], newInfo)) {
+	  				EdgeToInfo[out_edge] = newInfo;
 	  				worklist.push_back(OutgoingEdges[i]);
 	  			}	  			
 	  		}

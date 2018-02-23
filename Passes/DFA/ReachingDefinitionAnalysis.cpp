@@ -81,21 +81,20 @@ namespace llvm {
 				info_index->info_list.insert(index);
 			}
 			if(op == 53) {
-				info_index->info_list.insert(index++);
-				Instruction * next = I->getNextNode();
-				while(isa<PHINode>(next)) {
-					info_index->info_list.insert(index++);
-				}	
+				BasicBlock* block = I->getParent();
+          		for (auto ii = block->begin(), ie = block->end(); ii != ie; ++ii) {
+            		Instruction * instr = &*ii;
+            		if (isa<PHINode>(instr)){
+              			info_index->info_list.insert(InstrToIndex[instr]);
+            		}
+          		}
 			}
 
 			for(unsigned dst : OutgoingEdges) {
 	  			Edge out_edge = std::make_pair(index, dst);
-	  			ReachingInfo* info_out = EdgeToInfo[out_edge];
-	  			ReachingInfo* new_info = new ReachingInfo();
 	  			ReachingInfo* tmp_info = new ReachingInfo();
 				ReachingInfo::join(info_in, info_index, tmp_info);
-				ReachingInfo::join(tmp_info, info_out, new_info);
-				Infos.push_back(new_info);
+				Infos.push_back(tmp_info);
 			}
 
 			return;
