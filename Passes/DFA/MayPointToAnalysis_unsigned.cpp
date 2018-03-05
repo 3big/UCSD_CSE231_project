@@ -23,14 +23,10 @@ namespace llvm {
 		~MayPointToInfo() {}
 
 		void print() {
-			// std::map<unsigned, set<unsigned> > tmp_list;
-			// for(auto info: info_list) {
-			// 	tmp_list[info.fisrt].insert(info.second.begin())
-			// }
 			for(auto info : info_list) {
-				errs()<< info.first << "->(" ;
+				errs()<< "R" + to_string(info.first) << "->(" ;
 				for(auto pointee : info.second) {
-					errs()<< pointee << "/" ;
+					errs()<< "M" + to_string(pointee) << "/" ;
 				}
 				errs()<< ")|" ;	
 			}
@@ -56,7 +52,7 @@ namespace llvm {
 			return;
 		}
 
-		std::map<string, set<string> > info_list;
+		std::map<unsigned, set<unsigned> > info_list;
 	};
 
 
@@ -92,52 +88,58 @@ namespace llvm {
 
 			unsigned op = (*I).getOpcode();
 			MayPointToInfo* info_index = new MayPointToInfo();
-			string index_str = std::to_string(index);
+			// string index_str = std::to_string(index);
 
-			if(op == 29) {
-				info_index->info_list["R"+index_str].insert("M"+index_str);
+			// alloca
+			if(op == 29) {  
+				info_index->info_list[index].insert(index);
 			}
-			
+
+			// bitcast to
 			if(op == 47) {
 				Value* v = (*I).getOperand(0);
 				Instruction* v_instr = dyn_cast<Instruction>(v);
 				unsigned v_index = InstrToIndex[v_instr];
-				string v_str = std::to_string(v_index);
+				// string v_str = std::to_string(v_index);
 				for(auto in: info_in->info_list) {
-					if(in.first == "R"+v_str) {
-						info_index->info_list["R"+index_str].insert(in.second.begin(), in.second.end());
+					if(in.first == v_index) {
+						info_index->info_list[index].insert(in.second.begin(), in.second.end());
 					}
 				}
 			}
 			
+			// getelementptr
 			if(op == 32) {
 				Value* v = ((GetElementPtrInst*)I)->getPointerOperand();
 				Instruction* v_instr = dyn_cast<Instruction>(v);
 				unsigned v_index = InstrToIndex[v_instr];
-				string v_str = std::to_string(v_index);
+				// string v_str = std::to_string(v_index);
 				for(auto in: info_in->info_list) {
-					if(in.first == "R"+v_str) {
-						info_index->info_list["R"+index_str].insert(in.second.begin(), in.second.end());
+					if(in.first == v_index) {
+						info_index->info_list[index].insert(in.second.begin(), in.second.end());
 					}
 				}
 			}
 			
+			// load
 			if(op == 30) {
 				Value* v = ((LoadInst*)I)->getPointerOperand();
 				Instruction* v_instr = dyn_cast<Instruction>(v);
 				unsigned v_index = InstrToIndex[v_instr];
-				string Rv_str = "R" + std::to_string(v_index);
-				if(info_in->info_list.count(Rv_str)) {
-					std::set<string> tmp_Rv = info_in->info_list[Rv_str];
-					for (auto x: tmp_Rv) {
-						if(info_in->info_list.count(x)) {
-							std::set<string> tmp = info_in->info_list[x];
-							info_index->info_list["R"+index_str].insert(tmp.begin(), tmp.end());
+				// string v_str = std::to_string(v_index);
+				for(auto in: info_in->info_list) {
+					if(in.first == v_index) {
+						for (auto x: in.second) {
+							if(info_in->info_list.count(x)) {
+								std::set<unsigned> tmp = info_in->info_list[x];
+								info_index->info_list[index].insert(tmp.begin(), tmp.end());
+							}
 						}
 					}
 				}
 			}
 
+			// store
 			if(op == 31) {
 				Value* v = ((StoreInst*)I)->getValueOperand(); 
 				Value* v_ptr = ((StoreInst*)I)->getPointerOperand();
@@ -145,12 +147,12 @@ namespace llvm {
 				Instruction* Rp_instr = dyn_cast<Instruction>(v_ptr);
 				unsigned Rv_idx = InstrToIndex[Rv_instr];
 				unsigned Rp_idx = InstrToIndex[Rp_instr];
-				string Rv_str = "R" + std::to_string(Rv_idx);
-				string Rp_str = "R" + std::to_string(Rp_idx);
+				// string Rv_str = "R" + std::to_string(Rv_idx);
+				// string Rp_str = "R" + std::to_string(Rp_idx);
 
-				if(info_in->info_list.count(Rv_str) && info_in->info_list.count(Rp_str) ) {
-					std::set<string> tmp_Rv = info_in->info_list[Rv_str];
-					std::set<string> tmp_Rp = info_in->info_list[Rp_str];
+				if(info_in->info_list.count(Rv_idx) && info_in->info_list.count(Rp_idx) ) {
+					std::set<unsigned> tmp_Rv = info_in->info_list[Rv_idx];
+					std::set<unsigned> tmp_Rp = info_in->info_list[Rp_idx];
 
 					for (auto y: tmp_Rp) {
 						for(auto x: tmp_Rv) {
@@ -161,6 +163,7 @@ namespace llvm {
 
 			}
 
+			// select
 			if (op == 55) {
 				Value* v1 = ((SelectInst*)I)->getTrueValue(); 
 				Value* v2 = ((SelectInst*)I)->getFalseValue();
@@ -168,41 +171,18 @@ namespace llvm {
 				Instruction* R2_instr = dyn_cast<Instruction>(v2);
 				unsigned R1_idx = InstrToIndex[R1_instr];
 				unsigned R2_idx = InstrToIndex[R2_instr];
-				string R1_str = "R" + std::to_string(R1_idx);
-				string R2_str = "R" + std::to_string(R2_idx);
+				// string Rv_str = "R" + std::to_string(Rv_idx);
+				// string Rp_str = "R" + std::to_string(Rp_idx);
 
-				if(info_in->info_list.count(R1_str)) {
-					set<string> tmp_list = info_in->info_list[R1_str];
-					info_index->info_list["R"+index_str].insert(tmp_list.begin(), tmp_list.end());
-            	}	
-            	if(info_in->info_list.count(R2_str)) {
-					set<string> tmp_list = info_in->info_list[R2_str];
-					info_index->info_list["R"+index_str].insert(tmp_list.begin(), tmp_list.end());
-            	}
-				
 			}
 
+			// phi
 			if(op == 53) {
-				BasicBlock* block = I->getParent();
-				for (auto ii = block->begin(), ie = block->end(); ii != ie; ++ii) {
-            		Instruction * instr = &*ii;
-            		if (isa<PHINode>(instr)){
-            			for(unsigned i = 0; i < ((PHINode*)instr)->getNumIncomingValues(); i++) {
-            				Value* v = ((PHINode*)instr)->getIncomingValue(i); 
-            				Instruction* R_instr = dyn_cast<Instruction>(v);
-            				unsigned R_idx = InstrToIndex[R_instr];
-            				string R_str = "R" + std::to_string(R_idx);
-            				if(info_in->info_list.count(R_str)) {
-            					set<string> tmp_list = info_in->info_list[R_str];
-            					info_index->info_list["R"+index_str].insert(tmp_list.begin(), tmp_list.end());
-            				}	            			
-            			}
-            		}
-				}
+
 			}
 
 			for(unsigned dst : OutgoingEdges) {
-	  			Edge out_edge = std::make_pair(index, dst);
+	  			// Edge out_edge = std::make_pair(index, dst);
 	  			MayPointToInfo* tmp_info = new MayPointToInfo();
 				MayPointToInfo::join(info_in, info_index, tmp_info);
 				Infos.push_back(tmp_info);
