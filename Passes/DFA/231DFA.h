@@ -134,7 +134,7 @@ class DataFlowAnalysis {
 
 		/*
 		 * Utility function:
-		 *   Get incoming edges of the instruction identified by index.
+		 *   Get outgoing edges of the instruction identified by index.
 		 *   OutgoingEdges stores the indices of the destination instructions of the outgoing edges.
 		 */
 		void getOutgoingEdges(unsigned index, std::vector<unsigned> * OutgoingEdges) {
@@ -217,6 +217,52 @@ class DataFlowAnalysis {
 		 *   Implement the following function in part 3 for backward analyses
 		 */
 		void initializeBackwardMap(Function * func) {
+			assignIndiceToInstrs(func);
+
+			for (Function::iterator bi = func->begin(), e = func->end(); bi != e; ++bi) {
+				BasicBlock * block = &*bi;
+
+				Instruction * firstInstr = &(block->front());
+
+				// Initialize outgoing edges of the basic block
+				for (auto pi = pred_begin(block), pe = pred_end(block); pi != pe; ++pi) {
+					BasicBlock * prev = *pi;
+					Instruction * dst = (Instruction *)prev->getTerminator();
+					Instruction * src = firstInstr;
+					addEdge(src, dst, &Bottom);
+				}
+
+				// If there is at least one phi node, add an edge from the first non-phi node
+				// to the first phi node instruction in the basic block.
+				if (isa<PHINode>(firstInstr)) {
+					addEdge(block->getFirstNonPHI(), firstInstr, &Bottom);
+				}
+
+				// Initialize edges within the basic block
+				for (auto ii = block->begin(), ie = block->end(); ii != ie; ++ii) {
+					Instruction * instr = &*ii;
+					if (isa<PHINode>(instr))
+						continue;
+					if (instr == (Instruction *)block->getTerminator())
+						break;
+					Instruction * next = instr->getNextNode();
+					addEdge(next, instr, &Bottom);
+				}
+
+				// Initialize incoming edges to the basic block
+				Instruction * term = (Instruction *)block->getTerminator();
+				for (auto si = succ_begin(block), se = succ_end(block); si != se; ++si) {
+					BasicBlock * succ = *si;
+					Instruction * next = &(succ->front());
+					addEdge(next, term, &Bottom);
+				}
+
+			}
+
+			EntryInstr = (Instruction *) &((func->back()).back());
+			addEdge(nullptr, EntryInstr, &InitialState);
+
+			return;
 
 		}
 
@@ -280,7 +326,10 @@ class DataFlowAnalysis {
     	unsigned node = 0;
     	worklist.push_back(node++);
     	for (inst_iterator I = inst_begin(func), E = inst_end(func); I != E; ++I) {
-	  		worklist.push_back(node);
+    		if(Direction) 
+    			worklist.push_back(node);
+    		else
+    			worklist.push_front(node);
 	  		node++;
 	  	}
 
@@ -290,13 +339,14 @@ class DataFlowAnalysis {
     		worklist.pop_front();
     		if(index==0) continue;
     		Instruction * I = IndexToInstr[index];
+
     		std::vector<unsigned> IncomingEdges;
 	  		std::vector<unsigned> OutgoingEdges;
 	  		std::vector<Info *> Infos;
 	  		getIncomingEdges(index, &IncomingEdges);
 	  		getOutgoingEdges(index, &OutgoingEdges);
 	  		flowfunction(I, IncomingEdges, OutgoingEdges, Infos);
-	  		for(int i=0; i < OutgoingEdges.size(); i++) {
+	  		for(unsigned i=0; i < OutgoingEdges.size(); i++) {
 	  			unsigned dst = OutgoingEdges[i];
 	  			Edge out_edge = std::make_pair(index, dst);
 	  			Info * newInfo = new Info();
