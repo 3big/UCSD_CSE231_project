@@ -23,12 +23,29 @@ namespace llvm {
 		~MayPointToInfo() {}
 
 		void print() {
-			// std::map<unsigned, set<unsigned> > tmp_list;
-			// for(auto info: info_list) {
-			// 	tmp_list[info.fisrt].insert(info.second.begin())
-			// }
-			for(auto info : info_list) {
-				errs()<< info.first << "->(" ;
+			std::map<unsigned, set<string> > R_list;
+			std::map<unsigned, set<string> > M_list;
+			for(auto info: info_list) {
+				string flag = info.first.substr(0, 1);
+				string sub = info.first.substr(1);
+				unsigned long lnum = std::stoul(sub, 0, 10);
+    			unsigned num = lnum;
+    			if(flag == "R") {
+					R_list[num].insert(info.second.begin(), info.second.end());
+				}
+				else if(flag == "M") {
+					M_list[num].insert(info.second.begin(), info.second.end());
+				}
+			}
+			for(auto info : R_list) {
+				errs()<< "R" + to_string(info.first) << "->(" ;
+				for(auto pointee : info.second) {
+					errs()<< pointee << "/" ;
+				}
+				errs()<< ")|" ;	
+			}
+			for(auto info : M_list) {
+				errs()<< "M" + to_string(info.first) << "->(" ;
 				for(auto pointee : info.second) {
 					errs()<< pointee << "/" ;
 				}
