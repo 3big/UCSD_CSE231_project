@@ -139,15 +139,16 @@ namespace llvm {
 				}
 			}
 			
+			// load
 			if(op == 30) {
-				Value* v = ((LoadInst*)I)->getPointerOperand();
-				Instruction* v_instr = dyn_cast<Instruction>(v);
-				unsigned v_index = InstrToIndex[v_instr];
-				string Rv_str = "R" + std::to_string(v_index);
-				if(info_in->info_list.count(Rv_str)) {
-					std::set<string> tmp_Rv = info_in->info_list[Rv_str];
-					for (auto x: tmp_Rv) {
-						if(info_in->info_list.count(x)) {
+				Value* p = ((LoadInst*)I)->getPointerOperand();
+				Instruction* Rp_instr = dyn_cast<Instruction>(p);
+				unsigned Rp_index = InstrToIndex[Rp_instr];
+				string Rp_str = "R" + std::to_string(Rp_index);
+				if(info_in->info_list.count(Rp_str)) {
+					std::set<string> tmp_Rp = info_in->info_list[Rp_str];
+					for (auto x: tmp_Rp) {
+						if(info_in->info_list.count(x) && isa<PointerType>(I->getType())) {
 							std::set<string> tmp = info_in->info_list[x];
 							info_index->info_list["R"+index_str].insert(tmp.begin(), tmp.end());
 						}

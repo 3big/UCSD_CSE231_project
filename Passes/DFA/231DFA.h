@@ -243,8 +243,13 @@ class DataFlowAnalysis {
 					Instruction * instr = &*ii;
 					if (isa<PHINode>(instr))
 						continue;
-					if (instr == (Instruction *)block->getTerminator())
+					if (instr == (Instruction *)block->getTerminator()) {
+						if((*instr).getOpcode() == 1) {
+							EntryInstr = instr;
+							addEdge(nullptr, EntryInstr, &InitialState);
+						}
 						break;
+					}
 					Instruction * next = instr->getNextNode();
 					addEdge(next, instr, &Bottom);
 				}
@@ -259,11 +264,7 @@ class DataFlowAnalysis {
 
 			}
 
-			EntryInstr = (Instruction *) &((func->back()).back());
-			addEdge(nullptr, EntryInstr, &InitialState);
-
 			return;
-
 		}
 
     /*
